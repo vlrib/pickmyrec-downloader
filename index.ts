@@ -1,49 +1,33 @@
 import axios from "axios";
 import { ensureDir } from "fs-extra";
-import { Extract } from "unzip";
-import { get } from "https";
+import { fork } from "child_process";
+import { parse } from "content-disposition";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const Cookie = "SESS=737b34c8f9e377004e51da4555660c7715d19a";
 
-const urlDownloadRelease = (id: number) =>
-  `https://srv.pickmyrec.com/dwnld/release/${id}.zip`;
+const downloadRelease = (id: number) =>
+  new Promise<Record<string, string>>((resolve, reject) => {
+    console.log(`Downloading ${id}`);
+    const cp = fork("./worker.js", [], {
+      stdio: ["pipe", "pipe", "pipe", "ipc"]
+    });
 
-const downloadRelease = async (id: number) =>
-  get(
-    urlDownloadRelease(id),
-    {
-      headers: {
-        Cookie,
-        ["Host"]: "srv.pickmyrec.com",
-        ["Connection"]: "keep-alive",
-        ["Upgrade-Insecure-Requests"]: "1",
-        ["User-Agent"]:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
-        ["Sec-Fetch-Mode"]: "nested-navigate",
-        ["Accept"]:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
-        ["Sec-Fetch-Site"]: "same-origin",
-        ["Referer"]: "https://srv.pickmyrec.com/",
-        ["Accept-Encoding"]: "gzip, deflate, br",
-        ["Accept-Language"]: "en-US,en;q=0.9"
-      }
-    },
-    res => {
-      try {
-        res.pipe(Extract({ path: "./downloads" }));
-      } catch (e) {
-        console.log(`Error downloading release ${id}`);
-      }
-    }
-  );
+    cp.stdout!.on("data", chunk => console.log(`cp-out: ${chunk.toString()}`));
+    cp.stderr!.on("data", chunk => console.log(`cp-err: ${chunk.toString()}`));
+
+    cp.send({ id, Cookie });
+    cp.once("message", resolve);
+    cp.once("error", reject);
+  });
 
 const main = async () => {
   await ensureDir("./downloads/");
   const date = new Date();
   date.setUTCMilliseconds(date.getUTCMilliseconds() - 2 * DAY_MS);
   console.log(date);
-  for (let mc = 0; mc < 100; ) {
+  const tasks = [] as Promise<string>[];
+  for (let mc = 0; mc < 50; ) {
     const ts = date.toISOString();
     const match = ts.match(/(\d+)\-(\d+)\-(\d+)/);
     if (match === null) break;
@@ -60,11 +44,23 @@ const main = async () => {
     const releases = data.releases.map(({ id }: any) => Number(id)) as number[];
     mc += releases.length;
 
-    await Promise.all(releases.map(id => downloadRelease(id)));
-    console.log(`Downloaded ${mc}/100`);
+    tasks.push(
+      ...releases.map(id =>
+        downloadRelease(id).then(hdr => {
+          const {
+            parameters: { filename }
+          } = parse(hdr["content-disposition"]);
+          console.log(`Downloaded and extracted ${filename}`);
+          return filename as string;
+        })
+      )
+    );
 
     date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
   }
+
+  const downloaded = await Promise.all(tasks);
+  console.log(`Finished:\n${downloaded.join("\n")}`);
 };
 
 main();

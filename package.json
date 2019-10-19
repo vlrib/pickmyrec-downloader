@@ -7,14 +7,19 @@
   "dependencies": {
     "@types/fs-extra": "^8.0.1",
     "axios": "^0.19.0",
+    "content-disposition": "^0.5.3",
     "fs": "^0.0.1-security",
     "fs-extra": "^8.1.0",
     "fstream": "^1.0.12",
     "node-unzip-2": "^0.2.8",
     "unzip": "^0.1.11",
+    "wget-improved": "^3.0.2",
+    "workerpool": "^5.0.1",
     "zlib": "^1.0.5"
   },
   "devDependencies": {
-    "@types/unzip": "^0.1.1"
+    "@types/content-disposition": "^0.5.2",
+    "@types/unzip": "^0.1.1",
+    "@types/workerpool": "^5.0.0"
   }
 }
