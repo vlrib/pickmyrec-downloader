@@ -1,5 +1,133 @@
-
-> pickmyrec-downloader@1.0.0 run /Users/cezarguimaraes/Projects/pickmyrec-downloader
-> node .
-
-[{"id":31,"nm":"Deep House","pos":1,"selected":true,"has":false},{"id":48,"nm":"House","pos":2,"selected":true,"has":false},{"id":111,"nm":"Jackin House","pos":3,"selected":false,"has":false},{"id":68,"nm":"Minimal","pos":4,"selected":true,"has":false},{"id":72,"nm":"Nudisco","pos":5,"selected":false,"has":false},{"id":63,"nm":"Progressive","pos":6,"selected":false,"has":false},{"id":56,"nm":"Tech House","pos":7,"selected":false,"has":false},{"id":34,"nm":"Techno","pos":8,"selected":false,"has":false},{"id":26,"nm":"Electronica","pos":9,"selected":false,"has":false},{"id":51,"nm":"Rus/Mashups","pos":10,"selected":false,"has":false},{"id":29,"nm":"Electro House","pos":11,"selected":false,"has":false},{"id":139,"nm":"Future House","pos":12,"selected":false,"has":false},{"id":100,"nm":"Trance","pos":13,"selected":false,"has":false},{"id":86,"nm":"Soulful/Funk/Disco","pos":14,"selected":false,"has":false},{"id":110,"nm":"Afro House","pos":15,"selected":false,"has":false},{"id":73,"nm":"Breaks","pos":16,"selected":false,"has":false},{"id":42,"nm":"Drum & Bass","pos":17,"selected":false,"has":false},{"id":107,"nm":"Dubstep","pos":18,"selected":false,"has":false},{"id":17,"nm":"Chill Out","pos":19,"selected":false,"has":false},{"id":36,"nm":"DJ Tools","pos":20,"selected":false,"has":false},{"id":146,"nm":"Leftfield House","pos":1000,"selected":false,"has":false},{"id":145,"nm":"Melodic House/Techno","pos":1000,"selected":false,"has":false}]
+[{
+    "id": 31,
+    "nm": "Deep House",
+    "pos": 1,
+    "selected": true,
+    "has": false
+}, {
+    "id": 48,
+    "nm": "House",
+    "pos": 2,
+    "selected": false,
+    "has": false
+}, {
+    "id": 111,
+    "nm": "Jackin House",
+    "pos": 3,
+    "selected": false,
+    "has": false
+}, {
+    "id": 68,
+    "nm": "Minimal",
+    "pos": 4,
+    "selected": true,
+    "has": false
+}, {
+    "id": 72,
+    "nm": "Nudisco",
+    "pos": 5,
+    "selected": false,
+    "has": false
+}, {
+    "id": 63,
+    "nm": "Progressive",
+    "pos": 6,
+    "selected": false,
+    "has": false
+}, {
+    "id": 56,
+    "nm": "Tech House",
+    "pos": 7,
+    "selected": false,
+    "has": false
+}, {
+    "id": 34,
+    "nm": "Techno",
+    "pos": 8,
+    "selected": false,
+    "has": false
+}, {
+    "id": 26,
+    "nm": "Electronica",
+    "pos": 9,
+    "selected": false,
+    "has": false
+}, {
+    "id": 51,
+    "nm": "Rus/Mashups",
+    "pos": 10,
+    "selected": false,
+    "has": false
+}, {
+    "id": 29,
+    "nm": "Electro House",
+    "pos": 11,
+    "selected": false,
+    "has": false
+}, {
+    "id": 139,
+    "nm": "Future House",
+    "pos": 12,
+    "selected": false,
+    "has": false
+}, {
+    "id": 100,
+    "nm": "Trance",
+    "pos": 13,
+    "selected": false,
+    "has": false
+}, {
+    "id": 86,
+    "nm": "Soulful/Funk/Disco",
+    "pos": 14,
+    "selected": false,
+    "has": false
+}, {
+    "id": 110,
+    "nm": "Afro House",
+    "pos": 15,
+    "selected": false,
+    "has": false
+}, {
+    "id": 73,
+    "nm": "Breaks",
+    "pos": 16,
+    "selected": false,
+    "has": false
+}, {
+    "id": 42,
+    "nm": "Drum & Bass",
+    "pos": 17,
+    "selected": false,
+    "has": false
+}, {
+    "id": 107,
+    "nm": "Dubstep",
+    "pos": 18,
+    "selected": false,
+    "has": false
+}, {
+    "id": 17,
+    "nm": "Chill Out",
+    "pos": 19,
+    "selected": false,
+    "has": false
+}, {
+    "id": 36,
+    "nm": "DJ Tools",
+    "pos": 20,
+    "selected": false,
+    "has": false
+}, {
+    "id": 146,
+    "nm": "Leftfield House",
+    "pos": 1000,
+    "selected": false,
+    "has": false
+}, {
+    "id": 145,
+    "nm": "Melodic House/Techno",
+    "pos": 1000,
+    "selected": false,
+    "has": false
+}]

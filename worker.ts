@@ -1,18 +1,47 @@
-import { Extract } from "unzip";
-import { get } from "https";
-import { IncomingMessage } from "http";
+import { createWriteStream } from "fs-extra";
+import { parse } from "content-disposition";
+import axios from "axios";
+
+const httpAdapter = require("axios/lib/adapters/http");
 
 const urlDownloadRelease = (id: number) =>
   `https://srv.pickmyrec.com/dwnld/release/${id}.zip`;
 
-const downloadRelease = (
-  id: number,
-  Cookie: string,
-  callback: (headers: IncomingMessage["headers"]) => any
-) =>
-  get(
-    urlDownloadRelease(id),
-    {
+/* SENT MESSAGES: 
+{
+  type: "info",
+  data: {
+    filename,
+    size
+  }
+}
+
+{
+  type: "progress",
+  data: progress / size
+}
+
+{
+  type: "error",
+  data: (e || "").toString()
+}
+
+{
+  type: "end",
+  data: {
+    id,
+    filename,
+    path,
+    size
+  }
+}
+*/
+
+const downloadRelease = async (id: number, Cookie: string) =>
+  new Promise(async (resolve, reject) => {
+    const res = await axios.get(urlDownloadRelease(id), {
+      responseType: "stream",
+      adapter: httpAdapter,
       headers: {
         Cookie,
         ["Host"]: "srv.pickmyrec.com",
@@ -28,15 +57,69 @@ const downloadRelease = (
         ["Accept-Encoding"]: "gzip, deflate, br",
         ["Accept-Language"]: "en-US,en;q=0.9"
       }
-    },
-    (res: IncomingMessage) => {
-      res.on("end", () => callback(res.headers));
-      res.pipe(Extract({ path: "./downloads" }));
-    }
-  );
+    });
 
-process.once("message", ({ id, Cookie }) => {
-  downloadRelease(id, Cookie, headers => {
-    process.send!(headers);
+    const { data: stream, headers } = res;
+
+    const {
+      parameters: { filename }
+    } = parse(headers["content-disposition"]);
+
+    const size = Number(headers["content-length"]);
+    let progress = 0;
+
+    process.send!({
+      type: "info",
+      data: {
+        filename,
+        size
+      }
+    });
+
+    const path = `./downloads/${filename}`;
+    const output = createWriteStream(path);
+
+    stream.on("data", (chunk: Buffer) => {
+      progress += chunk.length;
+      output.write(chunk);
+      process.send!({
+        type: "progress",
+        data: progress / size
+      });
+    });
+
+    stream.on("error", (e: any) => {
+      output.end();
+      reject(e);
+      process.send!({
+        type: "error",
+        data: (e || "").toString()
+      });
+    });
+
+    stream.on("end", () => {
+      output.end();
+      const data = {
+        id,
+        filename,
+        path,
+        size
+      };
+      process.send!({
+        type: "end",
+        data
+      });
+      resolve(data);
+    });
   });
+
+process.on("message", ({ type, data }) => {
+  switch (type) {
+    case "kill":
+      process.exit(0);
+      break;
+    case "download":
+      downloadRelease(data.id, data.Cookie);
+      break;
+  }
 });
