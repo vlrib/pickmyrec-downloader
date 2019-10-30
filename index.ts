@@ -218,6 +218,37 @@ const releases = async (date: Date, n: number) => {
   return res.slice(0, n);
 };
 
+const scene = async (date: Date, n: number) => {
+  const res: Release[] = [];
+  while (res.length < n) {
+    const ts = date.toISOString();
+    const match = ts.match(/(\d+)\-(\d+)\-(\d+)/);
+    if (match === null) break;
+    const [param] = match;
+    const { data } = await axios.get(
+      `https://srv.pickmyrec.com/a/ms/section/scene/media?date=${param}&mp3prefered=false&popular_order=true`,
+      {
+        headers: {
+          Accept: "application/json",
+          Cookie
+        }
+      }
+    );
+
+    res.push(
+      ...(data.releases.map((r: any) => ({
+        id: r.id as number,
+        tracks: r.tracks.map((t: any) => ({
+          category: t.category_nm
+        }))
+      })) as Release[])
+    );
+
+    date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
+  }
+  return res.slice(0, n);
+};
+
 /*const filteredReleases = (releases: any) =>
   releases.filter(
     ({ tracks }) =>
@@ -243,21 +274,28 @@ const main = async () => {
   const list = await releases(date, 50);
 
   console.log(list);
-  // const w1 = newWorker("./worker.js");
 
-  // const filename = await downloadRelease(w1, list[0].id);
-  // console.log(`downloaded ${filename}`);
-
-  // w1.stop();
-
-  const queue = downloadQueue(list.slice(0, 4).map(x => x.id), 2, (id, m) => {
+  const queue = downloadQueue(list.slice(0, 0).map(x => x.id), 2, (id, m) => {
     console.debug("message from " + id, m);
   });
 
   await queue;
 
-  // const downloaded = await Promise.all(tasks);
-  // console.log(`Finished:\n${downloaded.join("\n")}`);
+  console.log("-------------------------------------");
+
+  const list_scene = await scene(date, 50);
+
+  console.log(list_scene);
+
+  const queue_scene = downloadQueue(
+    list_scene.slice(0, 4).map(x => x.id),
+    2,
+    (id, m) => {
+      console.debug("message from " + id, m);
+    }
+  );
+
+  await queue_scene;
 };
 
 main();
