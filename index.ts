@@ -182,14 +182,25 @@ interface Category {
   selected: boolean;
 }
 
-interface Release {
+interface Track {
   id: number;
-  tracks: Array<{ category: string }>;
+  tracks: Array<{ category: string; filesize: number }>;
+  totalsize: number;
 }
 
-const releases = async (date: Date, n: number) => {
-  const res: Release[] = [];
-  while (res.length < n) {
+const releases = async (date: Date, bytes: number, categories: any) => {
+  const res: Track[] = [];
+  const selectedCategories: string[] = categories.filter((c: any) => {
+    if (c.selected) return c.nm;
+  });
+
+  let n = 0;
+  while (n < bytes) {
+    res.forEach(element => {
+      element.tracks.forEach(track => {
+        n += track.filesize;
+      });
+    });
     const ts = date.toISOString();
     const match = ts.match(/(\d+)\-(\d+)\-(\d+)/);
     if (match === null) break;
@@ -205,22 +216,43 @@ const releases = async (date: Date, n: number) => {
     );
 
     res.push(
-      ...(data.releases.map((r: any) => ({
-        id: r.id as number,
-        tracks: r.tracks.map((t: any) => ({
-          category: t.category_nm
-        }))
-      })) as Release[])
+      ...data.releases
+        .filter((r: any) => !r.downloaded)
+        .filter(
+          () =>
+            categories.map((r: any) => ({
+              id: r.id as number,
+              tracks: r.tracks
+                .filter((t: any) =>
+                  t.some((track: any) =>
+                    selectedCategories.some(
+                      (selected: any) => track == selected
+                    )
+                  )
+                )
+                .map((t: any) => ({
+                  category: t.category_nm,
+                  filesize: t.filesize
+                }))
+            })) as Track[]
+        )
     );
 
     date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
   }
-  return res.slice(0, n);
+  return res;
 };
 
-const scene = async (date: Date, n: number) => {
-  const res: Release[] = [];
-  while (res.length < n) {
+const scene = async (date: Date, bytes: number) => {
+  const res: Track[] = [];
+  let n = 0;
+  while (n < bytes) {
+    console.log("n=", n);
+    res.forEach(element => {
+      element.tracks.forEach(track => {
+        n += track.filesize;
+      });
+    });
     const ts = date.toISOString();
     const match = ts.match(/(\d+)\-(\d+)\-(\d+)/);
     if (match === null) break;
@@ -239,43 +271,62 @@ const scene = async (date: Date, n: number) => {
       ...(data.releases.map((r: any) => ({
         id: r.id as number,
         tracks: r.tracks.map((t: any) => ({
-          category: t.category_nm
+          category: t.category_nm,
+          filesize: t.filesize
         }))
-      })) as Release[])
+      })) as Track[])
     );
 
     date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
   }
-  return res.slice(0, n);
+  return res;
 };
 
-/*const filteredReleases = (releases: any) =>
-  releases.filter(
-    ({ tracks }) =>
-      tracks.find(({ category }) => isSelected(category)) !== undefined
-  );*/
+const bytesLeft = (Cookie: string) =>
+  axios
+    .get("https://srv.pickmyrec.com/a/ms/app?v=1.6.389", {
+      headers: {
+        Accept: "application/json",
+        Cookie
+      }
+    })
+    .then((response: any) => {
+      const ret: { [sectionName: string]: number } = {};
+      response.data.sections.list.forEach((l: any) => {
+        ret[l.nm] = l.balance.bytesleft;
+      });
+      return ret;
+    });
+
+// const isSelected = (c: string) => selected.includes(c.toUpperCase());
+
+// const filteredReleases = (releases: any) =>
+//   releases.filter(
+//     ({ tracks }) =>
+//       tracks.find(({ category }) => isSelected(category)) !== undefined
+//   );
 
 const main = async () => {
   Cookie = `SESS=${await login(USER_LOGIN, USER_PASS)}`;
   console.log(Cookie);
   await ensureDir("./downloads/");
 
-  const categories: Category[] = await readJson("./categories.json");
-  const selected = categories
-    .filter(c => c.selected)
-    .map(c => c.nm.toUpperCase());
-  // const isSelected = (c: string) => selected.includes(c.toUpperCase());
+  // const selected = categories
+  //   .filter(c => c.selected)
+  //   .map(c => c.nm.toUpperCase());
 
-  console.log(`Selected categories: ${selected.map(s => `"${s}"`).join(" ")}`);
-
+  // console.log(`Selected categories: ${selected.map(s => `"${s}"`).join(" ")}`);
   const date = new Date();
   date.setUTCMilliseconds(date.getUTCMilliseconds() - 2 * DAY_MS);
 
-  const list = await releases(date, 50);
+  const bytesleft = await bytesLeft(Cookie);
 
-  console.log(list);
+  // ----------------------DOWNLOAD FILES---------------------------------//
 
-  const queue = downloadQueue(list.slice(0, 0).map(x => x.id), 2, (id, m) => {
+  const categories: Category[] = await readJson("./categories.json");
+  const list_releases = await releases(date, bytesleft["Releases"], categories);
+
+  const queue = downloadQueue(list_releases.map(x => x.id), 2, (id, m) => {
     console.debug("message from " + id, m);
   });
 
@@ -283,12 +334,12 @@ const main = async () => {
 
   console.log("-------------------------------------");
 
-  const list_scene = await scene(date, 50);
+  const list_scene = await scene(date, 1);
 
   console.log(list_scene);
 
   const queue_scene = downloadQueue(
-    list_scene.slice(0, 4).map(x => x.id),
+    list_scene.slice(0, 0).map(x => x.id),
     2,
     (id, m) => {
       console.debug("message from " + id, m);
@@ -296,6 +347,12 @@ const main = async () => {
   );
 
   await queue_scene;
+
+  // Releases
+  // Scene
+  // Charts
+  // Promo
+  // Packs
 };
 
 main();
