@@ -66,7 +66,7 @@ const downloadRelease = async (id: number, Cookie: string) =>
     } = parse(headers["content-disposition"]);
 
     const size = Number(headers["content-length"]);
-    let progress = 0;
+    // let progress = 0;
 
     process.send!({
       type: "info",
@@ -80,12 +80,8 @@ const downloadRelease = async (id: number, Cookie: string) =>
     const output = createWriteStream(path);
 
     stream.on("data", (chunk: Buffer) => {
-      progress += chunk.length;
+      // progress += chunk.length;
       output.write(chunk);
-      process.send!({
-        type: "progress",
-        data: progress / size
-      });
     });
 
     stream.on("error", (e: any) => {

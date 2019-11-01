@@ -182,14 +182,25 @@ interface Category {
   selected: boolean;
 }
 
-interface Track {
+interface Release {
   id: number;
-  tracks: Array<{ category: string; filesize: number }>;
+  tracks: Track[];
   totalsize: number;
+  matchPercentile: number;
 }
 
-const releases = async (date: Date, bytes: number, categories: any) => {
-  const res: Track[] = [];
+interface Track {
+  category: string;
+  filesize: number;
+}
+
+const getList = async (
+  section: string,
+  date: Date,
+  bytes: number,
+  categories: any
+) => {
+  const res: Release[] = [];
   const selectedCategories: string[] = categories.filter((c: any) => {
     if (c.selected) return c.nm;
   });
@@ -206,7 +217,7 @@ const releases = async (date: Date, bytes: number, categories: any) => {
     if (match === null) break;
     const [param] = match;
     const { data } = await axios.get(
-      `https://srv.pickmyrec.com/a/ms/section/beatport/media?date=${param}&mp3prefered=false&popular_order=true`,
+      `https://srv.pickmyrec.com/a/ms/section/${section}/media?date=${param}&mp3prefered=false&popular_order=true`,
       {
         headers: {
           Accept: "application/json",
@@ -214,74 +225,24 @@ const releases = async (date: Date, bytes: number, categories: any) => {
         }
       }
     );
-
     res.push(
-      ...data.releases
+      ...(data.releases
         .filter((r: any) => !r.downloaded)
-        .filter(
-          () =>
-            categories.map((r: any) => ({
-              id: r.id as number,
-              tracks: r.tracks
-                .filter((t: any) =>
-                  t.some((track: any) =>
-                    selectedCategories.some(
-                      (selected: any) => track == selected
-                    )
-                  )
-                )
-                .map((t: any) => ({
-                  category: t.category_nm,
-                  filesize: t.filesize
-                }))
-            })) as Track[]
-        )
+        .map((r: any) => ({
+          id: r.id as number,
+          tracks: r.tracks.map((t: any) => ({
+            category: t.category_nm
+          })) as Track[],
+          matchPercentile: (r.tracks.filter((t: any) =>
+            selectedCategories.some((s: any) => s.nm == t.category_nm)
+          ).length / r.tracks.length) as number
+        })) as Release[])
     );
 
     date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
   }
   return res;
 };
-
-const scene = async (date: Date, bytes: number) => {
-  const res: Track[] = [];
-  let n = 0;
-  while (n < bytes) {
-    console.log("n=", n);
-    res.forEach(element => {
-      element.tracks.forEach(track => {
-        n += track.filesize;
-      });
-    });
-    const ts = date.toISOString();
-    const match = ts.match(/(\d+)\-(\d+)\-(\d+)/);
-    if (match === null) break;
-    const [param] = match;
-    const { data } = await axios.get(
-      `https://srv.pickmyrec.com/a/ms/section/scene/media?date=${param}&mp3prefered=false&popular_order=true`,
-      {
-        headers: {
-          Accept: "application/json",
-          Cookie
-        }
-      }
-    );
-
-    res.push(
-      ...(data.releases.map((r: any) => ({
-        id: r.id as number,
-        tracks: r.tracks.map((t: any) => ({
-          category: t.category_nm,
-          filesize: t.filesize
-        }))
-      })) as Track[])
-    );
-
-    date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
-  }
-  return res;
-};
-
 const bytesLeft = (Cookie: string) =>
   axios
     .get("https://srv.pickmyrec.com/a/ms/app?v=1.6.389", {
@@ -298,24 +259,11 @@ const bytesLeft = (Cookie: string) =>
       return ret;
     });
 
-// const isSelected = (c: string) => selected.includes(c.toUpperCase());
-
-// const filteredReleases = (releases: any) =>
-//   releases.filter(
-//     ({ tracks }) =>
-//       tracks.find(({ category }) => isSelected(category)) !== undefined
-//   );
-
 const main = async () => {
   Cookie = `SESS=${await login(USER_LOGIN, USER_PASS)}`;
   console.log(Cookie);
   await ensureDir("./downloads/");
 
-  // const selected = categories
-  //   .filter(c => c.selected)
-  //   .map(c => c.nm.toUpperCase());
-
-  // console.log(`Selected categories: ${selected.map(s => `"${s}"`).join(" ")}`);
   const date = new Date();
   date.setUTCMilliseconds(date.getUTCMilliseconds() - 2 * DAY_MS);
 
@@ -323,20 +271,41 @@ const main = async () => {
 
   // ----------------------DOWNLOAD FILES---------------------------------//
 
-  const categories: Category[] = await readJson("./categories.json");
-  const list_releases = await releases(date, bytesleft["Releases"], categories);
+  const releaseCategories: Category[] = await readJson(
+    "./scene-categories.json"
+  );
+  console.log(
+    `Selected categories: ${releaseCategories
+      .filter((r: Category) => r.selected)
+      .map(s => `"${s.nm}"`)
+      .join(" ")}`
+  );
+
+  const list_releases = await getList(
+    "scene",
+    date,
+    bytesleft["Releases"],
+    releaseCategories
+  );
+  console.log("Downloading from scene...");
 
   const queue = downloadQueue(list_releases.map(x => x.id), 2, (id, m) => {
     console.debug("message from " + id, m);
   });
 
   await queue;
-
+  return;
   console.log("-------------------------------------");
 
-  const list_scene = await scene(date, 1);
+  const sceneCategories: Category[] = await readJson("./scene-categories.json");
+  const list_scene = await getList(
+    "scene",
+    date,
+    bytesleft["Scene"],
+    releaseCategories
+  );
 
-  console.log(list_scene);
+  console.log(sceneCategories);
 
   const queue_scene = downloadQueue(
     list_scene.slice(0, 0).map(x => x.id),
