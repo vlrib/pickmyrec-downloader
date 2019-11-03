@@ -4,6 +4,8 @@ import { fork } from "child_process";
 
 const { login: USER_LOGIN, password: USER_PASS } = require("./details.json");
 
+const matchThreshold = 0.3;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 let Cookie: string;
 
@@ -241,7 +243,8 @@ const getList = async (
 
     date.setUTCMilliseconds(date.getUTCMilliseconds() - DAY_MS);
   }
-  return res;
+
+  return res.filter(r => r.matchPercentile >= matchThreshold);
 };
 const bytesLeft = (Cookie: string) =>
   axios
@@ -254,7 +257,7 @@ const bytesLeft = (Cookie: string) =>
     .then((response: any) => {
       const ret: { [sectionName: string]: number } = {};
       response.data.sections.list.forEach((l: any) => {
-        ret[l.nm] = l.balance.bytesleft;
+        ret[l.nm.toUpperCase()] = l.balance.bytesleft;
       });
       return ret;
     });
@@ -269,10 +272,10 @@ const main = async () => {
 
   const bytesleft = await bytesLeft(Cookie);
 
-  // ----------------------DOWNLOAD FILES---------------------------------//
+  // -------------------------DOWNLOAD RELEASE FILES---------------------------------//
 
   const releaseCategories: Category[] = await readJson(
-    "./scene-categories.json"
+    "./release-categories.json"
   );
   console.log(
     `Selected categories: ${releaseCategories
@@ -282,40 +285,97 @@ const main = async () => {
   );
 
   const list_releases = await getList(
-    "scene",
+    "beatport",
     date,
-    bytesleft["Releases"],
+    bytesleft["RELEASES"],
     releaseCategories
   );
-  console.log("Downloading from scene...");
+  console.log("Downloading from Releases...");
 
-  const queue = downloadQueue(list_releases.map(x => x.id), 2, (id, m) => {
-    console.debug("message from " + id, m);
-  });
-
-  await queue;
-  return;
-  console.log("-------------------------------------");
-
-  const sceneCategories: Category[] = await readJson("./scene-categories.json");
-  const list_scene = await getList(
-    "scene",
-    date,
-    bytesleft["Scene"],
-    releaseCategories
-  );
-
-  console.log(sceneCategories);
-
-  const queue_scene = downloadQueue(
-    list_scene.slice(0, 0).map(x => x.id),
+  const queue_releases = downloadQueue(
+    list_releases.map(x => x.id),
     2,
     (id, m) => {
       console.debug("message from " + id, m);
     }
   );
 
+  await queue_releases;
+  console.log("-------------------------------------");
+
+  // -------------------------DOWNLOAD SCENE FILES---------------------------------//
+  const sceneCategories: Category[] = await readJson("./scene-categories.json");
+  console.log(
+    `Selected categories: ${sceneCategories
+      .filter((r: Category) => r.selected)
+      .map(s => `"${s.nm}"`)
+      .join(" ")}`
+  );
+
+  const list_scene = await getList(
+    "scene",
+    date,
+    bytesleft["SCENE"],
+    sceneCategories
+  );
+  console.log("Downloading from scenes...");
+
+  const queue_scene = downloadQueue(list_scene.map(x => x.id), 2, (id, m) => {
+    console.debug("message from " + id, m);
+  });
+
   await queue_scene;
+  console.log("-------------------------------------");
+
+  // -------------------------DOWNLOAD CHARTS FILES---------------------------------//
+  const chartsCategories: Category[] = await readJson(
+    "./charts-categories.json"
+  );
+  console.log(
+    `Selected categories: ${chartsCategories
+      .filter((r: Category) => r.selected)
+      .map(s => `"${s.nm}"`)
+      .join(" ")}`
+  );
+
+  const list_charts = await getList(
+    "charts",
+    date,
+    bytesleft["CHARTS"],
+    chartsCategories
+  );
+  console.log("Downloading from charts...");
+
+  const queue_charts = downloadQueue(list_charts.map(x => x.id), 2, (id, m) => {
+    console.debug("message from " + id, m);
+  });
+
+  await queue_charts;
+  console.log("-------------------------------------");
+
+  // -------------------------DOWNLOAD PROMO FILES---------------------------------//
+  const promoCategories: Category[] = await readJson("./promo-categories.json");
+  console.log(
+    `Selected categories: ${promoCategories
+      .filter((r: Category) => r.selected)
+      .map(s => `"${s.nm}"`)
+      .join(" ")}`
+  );
+
+  const list_promo = await getList(
+    "promo",
+    date,
+    bytesleft["PROMO"],
+    promoCategories
+  );
+  console.log("Downloading from promo...");
+
+  const queue_promo = downloadQueue(list_promo.map(x => x.id), 2, (id, m) => {
+    console.debug("message from " + id, m);
+  });
+
+  await queue_promo;
+  console.log("-------------------------------------");
 
   // Releases
   // Scene
