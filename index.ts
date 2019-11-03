@@ -275,7 +275,7 @@ const main = async () => {
   // -------------------------DOWNLOAD RELEASE FILES---------------------------------//
 
   const releaseCategories: Category[] = await readJson(
-    "./release-categories.json"
+    "categories/release-categories.json"
   );
   console.log(
     `Selected categories: ${releaseCategories
